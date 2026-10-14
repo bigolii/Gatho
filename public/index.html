@@ -50,6 +50,18 @@
   .comment:first-child { border-top:none; }
   .chead { font-size:14px; margin-bottom:4px; }
   .cbody { white-space:pre-wrap; line-height:1.45; overflow-wrap:anywhere; }
+  .reply { margin:8px 0 0 10px; padding:8px 12px; border-left:3px solid var(--accent); background:#fdf3ee; border-radius:0 10px 10px 0; font-size:14px; }
+  .reply .rwho { font-weight:700; color:var(--accent); margin-bottom:2px; font-size:13px; }
+  .reply .rbody { white-space:pre-wrap; line-height:1.4; overflow-wrap:anywhere; }
+  .clink { background:none; border:none; padding:0; margin:6px 12px 0 0; font-size:13px; color:var(--muted); text-decoration:underline; cursor:pointer; font-family:inherit; }
+  .rform { margin-top:8px; }
+  .rform textarea { margin:0 0 8px; min-height:64px; }
+  .rform .rrow { display:flex; gap:12px; align-items:center; }
+  .rform .postbtn { width:auto; padding:8px 16px; }
+  .notice { background:#fff7e0; border:1px solid #f0dca0; border-radius:16px; padding:16px; margin-bottom:16px; }
+  .notice b { display:block; margin-bottom:6px; }
+  .notice .nbody { white-space:pre-wrap; line-height:1.4; overflow-wrap:anywhere; margin-top:4px; }
+  .notice .postbtn { width:auto; margin-top:12px; padding:8px 16px; }
   /* home page */
   .hero { text-align:center; padding:28px 4px 8px; }
   .hero h1 { font-size:38px; line-height:1.08; }
@@ -177,13 +189,25 @@ async function load(){
   m.name = "robots"; m.content = "noindex";
   document.head.appendChild(m);
 
-  const { data: ev, error } = await sb.rpc("get_event", { p_slug: slug });
+  const { data: ev, error } = await sb.rpc("get_event", { p_slug: slug, p_token: getToken() });
   if(error || !ev) return showMessage("Sorry, we couldn't find that event.");
-  renderEvent(ev);
+
+  // If a signed-in host is viewing their own event, they can reply to comments.
+  // (RLS only returns the row if the signed-in user owns the event.)
+  let isHost = false;
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if(session){
+      const { data: own } = await sb.from("events").select("id").eq("slug", slug).maybeSingle();
+      isHost = !!own;
+    }
+  } catch(e){}
+  renderEvent(ev, isHost);
 }
 function showMessage(text){ app.replaceChildren(el("div","center muted",text)); }
 
-function renderComments(list, comments){
+function renderComments(list, comments, opts){
+  opts = opts || {};
   list.replaceChildren();
   if(!comments.length){ list.appendChild(el("div","muted","No comments yet. Say hi!")); return; }
   comments.forEach(c => {
@@ -191,11 +215,79 @@ function renderComments(list, comments){
     const head = el("div","chead");
     head.append(el("b",null,c.guest_name), el("span","muted"," · " + ago(c.created_at)));
     row.append(head, el("div","cbody",c.body));
+    if(c.host_reply){
+      const r = el("div","reply");
+      r.appendChild(el("div","rwho","Host · " + ago(c.host_reply_at)));
+      r.appendChild(el("div","rbody",c.host_reply));
+      row.appendChild(r);
+    }
+    if(opts.isHost) row.appendChild(replyControls(c, opts));
     list.appendChild(row);
   });
 }
 
-function renderEvent(ev){
+function replyControls(c, opts){
+  const box = el("div");
+  const open = el("button","clink", c.host_reply ? "Edit reply" : "Reply");
+  open.type = "button";
+  box.appendChild(open);
+  open.addEventListener("click", () => {
+    open.style.display = "none";
+    const form = el("div","rform");
+    const ta = el("textarea"); ta.maxLength = 500; ta.placeholder = "Write a reply…"; ta.value = c.host_reply || "";
+    const msg = el("div","msg");
+    const rrow = el("div","rrow");
+    const send = el("button","postbtn","Send reply"); send.type = "button";
+    const cancel = el("button","clink","Cancel"); cancel.type = "button";
+    rrow.append(send, cancel);
+    if(c.host_reply){
+      const rm = el("button","clink","Remove reply"); rm.type = "button";
+      rrow.appendChild(rm);
+      rm.addEventListener("click", async () => {
+        const err = await opts.reply(c.id, "");
+        if(err){ msg.className = "msg err"; msg.textContent = err; }
+      });
+    }
+    send.addEventListener("click", async () => {
+      const text = ta.value.trim();
+      if(!text){ msg.className = "msg err"; msg.textContent = "Write a reply first."; return; }
+      send.disabled = true; msg.className = "msg muted"; msg.textContent = "Sending…";
+      const err = await opts.reply(c.id, text);
+      if(err){ send.disabled = false; msg.className = "msg err"; msg.textContent = err; }
+    });
+    cancel.addEventListener("click", () => { form.remove(); open.style.display = ""; });
+    form.append(ta, rrow, msg);
+    box.appendChild(form);
+    ta.focus();
+  });
+  return box;
+}
+
+/* Shows "the host replied" to the person who wrote the comment, on the same
+   browser, once per new reply. */
+function buildNotice(ev, wrap){
+  const key = "gatho_seen_" + ev.slug;
+  const seen = safeGet(key);
+  const unseen = (ev.comments || [])
+    .filter(c => c.mine && c.host_reply && (!seen || new Date(c.host_reply_at) > new Date(seen)))
+    .sort((a,b) => new Date(b.host_reply_at) - new Date(a.host_reply_at));
+  if(!unseen.length) return;
+  const latest = unseen[0];
+  const box = el("div","notice");
+  box.appendChild(el("b",null, unseen.length > 1
+    ? "💬 The host replied to " + unseen.length + " of your comments"
+    : "💬 The host replied to your comment"));
+  const you = el("div","muted","You wrote: " + (latest.body.length > 120 ? latest.body.slice(0,120) + "…" : latest.body));
+  box.appendChild(you);
+  box.appendChild(el("div","nbody","Host: " + latest.host_reply));
+  if(unseen.length > 1) box.appendChild(el("div","muted","See the other replies in the comments below."));
+  const ok = el("button","postbtn","Got it"); ok.type = "button";
+  ok.addEventListener("click", () => { safeSet(key, latest.host_reply_at); box.remove(); });
+  box.appendChild(ok);
+  wrap.appendChild(box);
+}
+
+function renderEvent(ev, isHost){
   document.title = ev.title + " · Gatho";
   const start = new Date(ev.starts_at);
   let saved = null;
@@ -203,6 +295,7 @@ function renderEvent(ev){
   const st = { status: saved && saved.status || null, plus: saved && saved.plus || 0 };
 
   const wrap = document.createElement("div");
+  buildNotice(ev, wrap);
 
   /* ---- main card ---- */
   const card = el("div","card flush");
@@ -292,7 +385,21 @@ function renderEvent(ev){
   /* ---- comments card ---- */
   const cc = el("div","card");
   cc.appendChild(el("h3",null,"Comments"));
-  const list = el("div"); renderComments(list, ev.comments || []);
+  const list = el("div");
+  const copts = {
+    isHost,
+    reply: async (id, text) => {
+      const { error } = await sb.rpc("reply_to_comment", { p_comment_id: id, p_body: text });
+      if(error) return friendly(error);
+      await refreshComments();
+      return null;
+    }
+  };
+  async function refreshComments(){
+    const { data: fresh } = await sb.rpc("get_event", { p_slug: ev.slug, p_token: getToken() });
+    if(fresh) renderComments(list, fresh.comments || [], copts);
+  }
+  renderComments(list, ev.comments || [], copts);
   cc.appendChild(list);
 
   const form = el("div"); form.style.marginTop = "16px";
@@ -340,8 +447,7 @@ function renderEvent(ev){
     if(error){ cmsg.className = "msg err"; cmsg.textContent = friendly(error); return; }
     safeSet("gatho_name", n);
     cbody.value = ""; cmsg.textContent = "";
-    const { data: fresh } = await sb.rpc("get_event", { p_slug: ev.slug });
-    if(fresh) renderComments(list, fresh.comments || []);
+    await refreshComments();
   });
 }
 

@@ -162,7 +162,7 @@ async function showDashboard(){
 
   const { data: events, error } = await sb
     .from("events")
-    .select("id, slug, title, starts_at, ends_at, location, description, cover_url, rsvps(id, guest_name, status, plus_ones), comments(id, guest_name, body, created_at)")
+    .select("id, slug, title, starts_at, ends_at, location, description, cover_url, rsvps(id, guest_name, status, plus_ones), comments(id, guest_name, body, created_at, host_reply, host_reply_at)")
     .order("starts_at", { ascending: true });
 
   const root = document.createElement("div");
@@ -239,12 +239,26 @@ function eventCard(ev){
   const cm = (ev.comments || []).slice().sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
   if(cm.length){
     const d = document.createElement("details");
-    d.appendChild(el("summary",null,"Comments (" + cm.length + ")"));
+    const needReply = cm.filter(c => !c.host_reply).length;
+    d.appendChild(el("summary",null,"Comments (" + cm.length + (needReply ? " · " + needReply + " to reply" : "") + ")"));
     const list = el("div","list");
     cm.forEach(c => {
       const li = el("div","li");
+      const left = el("div");
+      left.style.flex = "1"; left.style.minWidth = "0";
       const t = el("div","t");
       t.append(el("b",null,c.guest_name + ": "), document.createTextNode(c.body));
+      left.appendChild(t);
+      if(c.host_reply){
+        const rp = el("div","muted");
+        rp.style.marginTop = "4px";
+        rp.textContent = "↳ Your reply: " + c.host_reply;
+        left.appendChild(rp);
+      }
+      const rbtn = el("button","link", c.host_reply ? "Edit reply" : "Reply");
+      rbtn.style.display = "block"; rbtn.style.marginTop = "4px";
+      rbtn.addEventListener("click", () => { rbtn.style.display = "none"; left.appendChild(replyForm(c)); });
+      left.appendChild(rbtn);
       const rm = el("button","link danger","Delete");
       rm.addEventListener("click", async () => {
         if(!confirm("Delete this comment?")) return;
@@ -252,7 +266,7 @@ function eventCard(ev){
         if(error){ alert("Couldn't delete: " + error.message); return; }
         showDashboard();
       });
-      li.append(t, rm); list.appendChild(li);
+      li.append(left, rm); list.appendChild(li);
     });
     d.appendChild(list); inner.appendChild(d);
   }
@@ -277,6 +291,39 @@ async function copy(text, btn){
   try { await navigator.clipboard.writeText(text); btn.textContent = "Copied!"; }
   catch(e){ window.prompt("Copy this link:", text); }
   setTimeout(() => { btn.textContent = old; }, 1500);
+}
+async function sendReply(id, text){
+  const { error } = await sb.rpc("reply_to_comment", { p_comment_id: id, p_body: text });
+  return error ? error.message : null;
+}
+function replyForm(c){
+  const form = el("div");
+  form.style.marginTop = "6px";
+  const ta = document.createElement("textarea");
+  ta.maxLength = 500; ta.placeholder = "Write a reply…"; ta.value = c.host_reply || "";
+  const msg = el("div","msg");
+  const row = el("div","row2");
+  const send = el("button","btn small","Send reply"); send.type = "button"; send.style.margin = "0";
+  const cancel = el("button","link","Cancel"); cancel.type = "button";
+  row.append(send, cancel);
+  if(c.host_reply){
+    const rm = el("button","link danger","Remove reply"); rm.type = "button";
+    row.appendChild(rm);
+    rm.addEventListener("click", async () => {
+      const err = await sendReply(c.id, "");
+      if(err){ msg.className = "msg err"; msg.textContent = err; } else showDashboard();
+    });
+  }
+  send.addEventListener("click", async () => {
+    const text = ta.value.trim();
+    if(!text){ msg.className = "msg err"; msg.textContent = "Write a reply first."; return; }
+    send.disabled = true; msg.className = "msg muted"; msg.textContent = "Sending…";
+    const err = await sendReply(c.id, text);
+    if(err){ send.disabled = false; msg.className = "msg err"; msg.textContent = err; } else showDashboard();
+  });
+  cancel.addEventListener("click", showDashboard);
+  form.append(ta, row, msg);
+  return form;
 }
 function removeCoverFile(url){
   if(!validCover(url)) return;
