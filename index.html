@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gatho</title>
+<style>
+  :root { --bg:#faf7f2; --card:#fff; --ink:#1f1d1a; --muted:#7a746b; --accent:#e4572e; --line:#ece6dc; --go:#2e9e5b; --maybe:#e0a526; --no:#c0392b; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; background:var(--bg); color:var(--ink); }
+  .wrap { max-width:480px; margin:0 auto; padding:24px 16px 48px; }
+  .brand { font-weight:800; letter-spacing:-.5px; color:var(--accent); font-size:20px; margin-bottom:16px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:20px; padding:24px; }
+  h1 { margin:0 0 12px; font-size:28px; line-height:1.15; letter-spacing:-.5px; }
+  .row { display:flex; gap:10px; margin:8px 0; color:var(--ink); font-size:16px; }
+  .row .ic { width:22px; flex:none; text-align:center; }
+  .muted { color:var(--muted); }
+  .desc { margin:16px 0 0; white-space:pre-wrap; line-height:1.5; }
+  .counts { display:flex; gap:16px; margin-top:16px; padding-top:16px; border-top:1px solid var(--line); font-size:14px; color:var(--muted); }
+  .counts b { color:var(--ink); }
+  h2 { font-size:16px; margin:24px 0 10px; }
+  input[type=text] { width:100%; padding:14px; font-size:16px; border:1px solid var(--line); border-radius:12px; background:#fff; margin-bottom:12px; }
+  .btns { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+  .btn { padding:14px 4px; font-size:15px; font-weight:600; border:2px solid var(--line); background:#fff; border-radius:12px; cursor:pointer; }
+  .btn.sel.going { background:var(--go); border-color:var(--go); color:#fff; }
+  .btn.sel.maybe { background:var(--maybe); border-color:var(--maybe); color:#fff; }
+  .btn.sel.not_going { background:var(--no); border-color:var(--no); color:#fff; }
+  .cal { display:none; margin-top:20px; }
+  .cal.show { display:block; }
+  .cal a { display:block; text-align:center; text-decoration:none; padding:14px; margin-top:8px; border-radius:12px; font-weight:600; border:2px solid var(--accent); color:var(--accent); }
+  .cal a.primary { background:var(--accent); color:#fff; }
+  .msg { margin-top:12px; font-size:14px; min-height:20px; }
+  .err { color:var(--no); }
+  .ok { color:var(--go); }
+  .center { text-align:center; padding:40px 8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">gatho</div>
+  <div id="app"><div class="center muted">Loading…</div></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = "https://wjnfkqkzbblijzmbcasx.supabase.co";
+const SUPABASE_KEY = "sb_publishable_re5_9n7OLaKaCFGuIMlVvw_OIEsla_V";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const app = document.getElementById("app");
+const params = new URLSearchParams(location.search);
+const slug = (location.pathname.match(/^\/e\/([^\/]+)/) || [])[1] || params.get("e");
+
+function safeGet(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }
+function safeSet(k,v){ try { localStorage.setItem(k,v); } catch(e){} }
+
+function getToken(){
+  let t = safeGet("gatho_token");
+  if(!t){
+    t = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2));
+    safeSet("gatho_token", t);
+  }
+  return t;
+}
+
+function el(tag, cls, text){
+  const n = document.createElement(tag);
+  if(cls) n.className = cls;
+  if(text !== undefined) n.textContent = text;
+  return n;
+}
+
+function fmtDate(d){
+  return d.toLocaleDateString(undefined, { weekday:"long", day:"numeric", month:"long", year:"numeric" });
+}
+function fmtTime(d){
+  return d.toLocaleTimeString(undefined, { hour:"numeric", minute:"2-digit" });
+}
+
+function icsStamp(d){ return d.toISOString().replace(/[-:]/g,"").replace(/\.\d{3}/,""); }
+function icsEscape(s){ return (s||"").replace(/\\/g,"\\\\").replace(/;/g,"\\;").replace(/,/g,"\\,").replace(/\r?\n/g,"\\n"); }
+
+function calendarLinks(ev){
+  const start = new Date(ev.starts_at);
+  const end = ev.ends_at ? new Date(ev.ends_at) : new Date(start.getTime() + 2*3600*1000);
+  const ics = [
+    "BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//Gatho//EN","BEGIN:VEVENT",
+    "UID:" + ev.slug + "@gatho",
+    "DTSTAMP:" + icsStamp(new Date()),
+    "DTSTART:" + icsStamp(start),
+    "DTEND:" + icsStamp(end),
+    "SUMMARY:" + icsEscape(ev.title),
+    "LOCATION:" + icsEscape(ev.location),
+    "DESCRIPTION:" + icsEscape(ev.description),
+    "END:VEVENT","END:VCALENDAR"
+  ].join("\r\n");
+  const icsUrl = URL.createObjectURL(new Blob([ics], { type:"text/calendar" }));
+  const g = "https://calendar.google.com/calendar/render?action=TEMPLATE"
+    + "&text=" + encodeURIComponent(ev.title)
+    + "&dates=" + icsStamp(start) + "/" + icsStamp(end)
+    + "&location=" + encodeURIComponent(ev.location || "")
+    + "&details=" + encodeURIComponent(ev.description || "");
+  return { icsUrl, google:g };
+}
+
+function showMessage(text){
+  app.replaceChildren(el("div","center muted",text));
+}
+
+async function load(){
+  if(!slug){
+    showMessage("Open an event link to see the details.");
+    return;
+  }
+  const { data: ev, error } = await sb.rpc("get_event", { p_slug: slug });
+  if(error || !ev){
+    showMessage("Sorry, we couldn't find that event.");
+    return;
+  }
+  render(ev);
+}
+
+function render(ev){
+  document.title = ev.title + " · Gatho";
+  const start = new Date(ev.starts_at);
+  const saved = (() => { try { return JSON.parse(safeGet("gatho_" + ev.slug) || "null"); } catch(e){ return null; } })();
+
+  const card = el("div","card");
+  card.appendChild(el("h1",null,ev.title));
+
+  const r1 = el("div","row");
+  r1.appendChild(el("span","ic","📅"));
+  const when = el("div");
+  when.appendChild(el("div",null,fmtDate(start)));
+  when.appendChild(el("div","muted",fmtTime(start) + (ev.ends_at ? " – " + fmtTime(new Date(ev.ends_at)) : "")));
+  r1.appendChild(when);
+  card.appendChild(r1);
+
+  if(ev.location){
+    const r2 = el("div","row");
+    r2.appendChild(el("span","ic","📍"));
+    r2.appendChild(el("div",null,ev.location));
+    card.appendChild(r2);
+  }
+  if(ev.description) card.appendChild(el("p","desc",ev.description));
+
+  const counts = el("div","counts");
+  const g = el("span"); g.append(el("b",null,String(ev.going))," going");
+  const m = el("span"); m.append(el("b",null,String(ev.maybe))," maybe");
+  counts.append(g,m);
+  card.appendChild(counts);
+
+  card.appendChild(el("h2",null,"Will you be there?"));
+
+  const name = el("input");
+  name.type = "text";
+  name.placeholder = "Your name";
+  name.maxLength = 60;
+  name.autocomplete = "given-name";
+  if(saved && saved.name) name.value = saved.name;
+  card.appendChild(name);
+
+  const btns = el("div","btns");
+  const opts = [["going","Going"],["maybe","Maybe"],["not_going","Can't go"]];
+  const buttons = {};
+  opts.forEach(([val,label]) => {
+    const b = el("button","btn",label);
+    b.type = "button";
+    buttons[val] = b;
+    if(saved && saved.status === val) b.classList.add("sel", val);
+    b.addEventListener("click", () => submit(val));
+    btns.appendChild(b);
+  });
+  card.appendChild(btns);
+
+  const msg = el("div","msg");
+  card.appendChild(msg);
+
+  const cal = el("div","cal");
+  const links = calendarLinks(ev);
+  const a1 = el("a","primary","Add to Apple / Outlook calendar");
+  a1.href = links.icsUrl; a1.download = "event.ics";
+  const a2 = el("a",null,"Add to Google Calendar");
+  a2.href = links.google; a2.target = "_blank"; a2.rel = "noopener";
+  cal.append(a1,a2);
+  card.appendChild(cal);
+  if(saved && (saved.status === "going" || saved.status === "maybe")) cal.classList.add("show");
+
+  app.replaceChildren(card);
+
+  async function submit(status){
+    const n = name.value.trim();
+    if(!n){ msg.className = "msg err"; msg.textContent = "Please enter your name first."; name.focus(); return; }
+    msg.className = "msg muted"; msg.textContent = "Saving…";
+    const { error } = await sb.rpc("submit_rsvp", { p_slug: ev.slug, p_name: n, p_status: status, p_token: getToken() });
+    if(error){ msg.className = "msg err"; msg.textContent = "Something went wrong. Please try again."; return; }
+    safeSet("gatho_" + ev.slug, JSON.stringify({ name:n, status }));
+    Object.entries(buttons).forEach(([v,b]) => { b.className = "btn"; if(v === status) b.classList.add("sel", v); });
+    msg.className = "msg ok";
+    msg.textContent = status === "not_going" ? "Thanks for letting them know." : "You're in! See you there.";
+    cal.classList.toggle("show", status !== "not_going");
+  }
+}
+
+load();
+</script>
+</body>
+</html>
