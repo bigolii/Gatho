@@ -3,41 +3,69 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Gatho</title>
+<title>Gatho · Simple party invites</title>
+<meta name="description" content="Create an event, share one link, and see who's coming. Guests don't need an app or an account.">
 <style>
-  :root { --bg:#faf7f2; --card:#fff; --ink:#1f1d1a; --muted:#7a746b; --accent:#e4572e; --line:#ece6dc; --go:#2e9e5b; --maybe:#e0a526; --no:#c0392b; }
+  :root { --bg:#faf7f2; --card:#fff; --ink:#1f1d1a; --muted:#7a746b; --accent:#e4572e; --accent2:#f08a4b; --line:#ece6dc; --go:#2e9e5b; --maybe:#e0a526; --no:#c0392b; }
   * { box-sizing:border-box; }
   body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; background:var(--bg); color:var(--ink); }
-  .wrap { max-width:480px; margin:0 auto; padding:24px 16px 48px; }
-  .brand { font-weight:800; letter-spacing:-.5px; color:var(--accent); font-size:20px; margin-bottom:16px; }
-  .card { background:var(--card); border:1px solid var(--line); border-radius:20px; padding:24px; }
+  .wrap { max-width:480px; margin:0 auto; padding:20px 16px 56px; }
+  .brand { font-weight:800; letter-spacing:-.5px; color:var(--accent); font-size:20px; margin-bottom:14px; text-decoration:none; display:inline-block; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:20px; padding:24px; margin-bottom:16px; }
+  .card.flush { padding:0; overflow:hidden; }
+  .body { padding:24px; }
+  .cover { width:100%; aspect-ratio:16/9; background-size:cover; background-position:center; }
   h1 { margin:0 0 12px; font-size:28px; line-height:1.15; letter-spacing:-.5px; }
-  .row { display:flex; gap:10px; margin:8px 0; color:var(--ink); font-size:16px; }
+  h2 { font-size:16px; margin:24px 0 10px; }
+  h3 { font-size:17px; margin:0 0 12px; }
+  .row { display:flex; gap:10px; margin:8px 0; font-size:16px; }
   .row .ic { width:22px; flex:none; text-align:center; }
+  .row a { color:var(--ink); text-decoration:underline; text-decoration-color:var(--line); text-underline-offset:3px; }
   .muted { color:var(--muted); }
-  .desc { margin:16px 0 0; white-space:pre-wrap; line-height:1.5; }
+  .desc { margin:16px 0 0; white-space:pre-wrap; line-height:1.5; overflow-wrap:anywhere; }
   .counts { display:flex; gap:16px; margin-top:16px; padding-top:16px; border-top:1px solid var(--line); font-size:14px; color:var(--muted); }
   .counts b { color:var(--ink); }
-  h2 { font-size:16px; margin:24px 0 10px; }
-  input[type=text] { width:100%; padding:14px; font-size:16px; border:1px solid var(--line); border-radius:12px; background:#fff; margin-bottom:12px; }
+  input[type=text], textarea { width:100%; padding:14px; font-size:16px; font-family:inherit; border:1px solid var(--line); border-radius:12px; background:#fff; margin-bottom:12px; }
+  textarea { min-height:80px; resize:vertical; }
   .btns { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
-  .btn { padding:14px 4px; font-size:15px; font-weight:600; border:2px solid var(--line); background:#fff; border-radius:12px; cursor:pointer; }
+  .btn { padding:14px 4px; font-size:15px; font-weight:600; border:2px solid var(--line); background:#fff; border-radius:12px; cursor:pointer; color:var(--ink); }
   .btn.sel.going { background:var(--go); border-color:var(--go); color:#fff; }
   .btn.sel.maybe { background:var(--maybe); border-color:var(--maybe); color:#fff; }
   .btn.sel.not_going { background:var(--no); border-color:var(--no); color:#fff; }
+  .stepper { display:flex; align-items:center; justify-content:space-between; margin:14px 0 0; padding:10px 14px; border:1px solid var(--line); border-radius:12px; }
+  .stepper .slabel { font-size:15px; }
+  .sctl { display:flex; align-items:center; gap:14px; }
+  .sbtn { width:36px; height:36px; border-radius:50%; border:2px solid var(--line); background:#fff; font-size:20px; line-height:1; cursor:pointer; color:var(--ink); }
+  .sval { min-width:18px; text-align:center; font-weight:700; font-size:17px; }
   .cal { display:none; margin-top:20px; }
   .cal.show { display:block; }
   .cal a { display:block; text-align:center; text-decoration:none; padding:14px; margin-top:8px; border-radius:12px; font-weight:600; border:2px solid var(--accent); color:var(--accent); }
   .cal a.primary { background:var(--accent); color:#fff; }
-  .msg { margin-top:12px; font-size:14px; min-height:20px; }
+  .msg { margin-top:12px; font-size:14px; min-height:18px; }
   .err { color:var(--no); }
   .ok { color:var(--go); }
   .center { text-align:center; padding:40px 8px; }
+  .postbtn { width:100%; padding:12px; font-size:15px; font-weight:700; border:none; border-radius:12px; background:var(--ink); color:#fff; cursor:pointer; }
+  .comment { padding:12px 0; border-top:1px solid var(--line); }
+  .comment:first-child { border-top:none; }
+  .chead { font-size:14px; margin-bottom:4px; }
+  .cbody { white-space:pre-wrap; line-height:1.45; overflow-wrap:anywhere; }
+  /* home page */
+  .hero { text-align:center; padding:28px 4px 8px; }
+  .hero h1 { font-size:38px; line-height:1.08; }
+  .hero p { font-size:18px; line-height:1.45; color:var(--muted); margin:0 0 24px; }
+  .cta { display:block; text-align:center; text-decoration:none; padding:16px; font-size:17px; font-weight:700; border-radius:14px; background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#fff; }
+  .feat { display:flex; gap:14px; margin:0 0 18px; }
+  .feat .e { font-size:26px; width:34px; flex:none; text-align:center; }
+  .feat b { display:block; margin-bottom:2px; }
+  .feat span { color:var(--muted); font-size:15px; line-height:1.4; }
+  .foot { text-align:center; font-size:13px; color:var(--muted); margin-top:28px; }
+  .foot a { color:var(--muted); }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <div class="brand">gatho</div>
+  <a class="brand" href="/">gatho</a>
   <div id="app"><div class="center muted">Loading…</div></div>
 </div>
 
@@ -45,161 +73,276 @@
 <script>
 const SUPABASE_URL = "https://wjnfkqkzbblijzmbcasx.supabase.co";
 const SUPABASE_KEY = "sb_publishable_re5_9n7OLaKaCFGuIMlVvw_OIEsla_V";
+const COVER_PREFIX = SUPABASE_URL + "/storage/v1/object/public/covers/";
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const app = document.getElementById("app");
-const params = new URLSearchParams(location.search);
-const slug = (location.pathname.match(/^\/e\/([^\/]+)/) || [])[1] || params.get("e");
+const rawSlug = (location.pathname.match(/^\/e\/([^\/]+)/) || [])[1] || new URLSearchParams(location.search).get("e");
+const slug = rawSlug && /^[a-z0-9]{4,32}$/i.test(rawSlug) ? rawSlug : null;
 
 function safeGet(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }
 function safeSet(k,v){ try { localStorage.setItem(k,v); } catch(e){} }
-
 function getToken(){
   let t = safeGet("gatho_token");
   if(!t){
-    t = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2));
+    t = crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2) + Math.random().toString(16).slice(2);
     safeSet("gatho_token", t);
   }
   return t;
 }
-
 function el(tag, cls, text){
   const n = document.createElement(tag);
   if(cls) n.className = cls;
   if(text !== undefined) n.textContent = text;
   return n;
 }
-
-function fmtDate(d){
-  return d.toLocaleDateString(undefined, { weekday:"long", day:"numeric", month:"long", year:"numeric" });
+function friendly(error){
+  const m = (error && error.message) || "";
+  return m && m.length < 90 ? m : "Something went wrong. Please try again.";
 }
-function fmtTime(d){
-  return d.toLocaleTimeString(undefined, { hour:"numeric", minute:"2-digit" });
+function fmtDate(d){ return d.toLocaleDateString(undefined, { weekday:"long", day:"numeric", month:"long", year:"numeric" }); }
+function fmtTime(d){ return d.toLocaleTimeString(undefined, { hour:"numeric", minute:"2-digit" }); }
+function ago(iso){
+  const s = Math.max(1, Math.round((Date.now() - new Date(iso).getTime()) / 1000));
+  if(s < 60) return "just now";
+  if(s < 3600) return Math.round(s/60) + "m ago";
+  if(s < 86400) return Math.round(s/3600) + "h ago";
+  return Math.round(s/86400) + "d ago";
 }
-
+function hue(str){ let h = 0; for(const c of str) h = (h*31 + c.charCodeAt(0)) % 360; return h; }
 function icsStamp(d){ return d.toISOString().replace(/[-:]/g,"").replace(/\.\d{3}/,""); }
 function icsEscape(s){ return (s||"").replace(/\\/g,"\\\\").replace(/;/g,"\\;").replace(/,/g,"\\,").replace(/\r?\n/g,"\\n"); }
 
 function calendarLinks(ev){
   const start = new Date(ev.starts_at);
   const end = ev.ends_at ? new Date(ev.ends_at) : new Date(start.getTime() + 2*3600*1000);
-  const ics = [
-    "BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//Gatho//EN","BEGIN:VEVENT",
-    "UID:" + ev.slug + "@gatho",
-    "DTSTAMP:" + icsStamp(new Date()),
-    "DTSTART:" + icsStamp(start),
-    "DTEND:" + icsStamp(end),
-    "SUMMARY:" + icsEscape(ev.title),
-    "LOCATION:" + icsEscape(ev.location),
-    "DESCRIPTION:" + icsEscape(ev.description),
-    "END:VEVENT","END:VCALENDAR"
-  ].join("\r\n");
+  const ics = ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//Gatho//EN","BEGIN:VEVENT",
+    "UID:" + ev.slug + "@gatho","DTSTAMP:" + icsStamp(new Date()),
+    "DTSTART:" + icsStamp(start),"DTEND:" + icsStamp(end),
+    "SUMMARY:" + icsEscape(ev.title),"LOCATION:" + icsEscape(ev.location),
+    "DESCRIPTION:" + icsEscape(ev.description),"END:VEVENT","END:VCALENDAR"].join("\r\n");
   const icsUrl = URL.createObjectURL(new Blob([ics], { type:"text/calendar" }));
-  const g = "https://calendar.google.com/calendar/render?action=TEMPLATE"
+  const google = "https://calendar.google.com/calendar/render?action=TEMPLATE"
     + "&text=" + encodeURIComponent(ev.title)
     + "&dates=" + icsStamp(start) + "/" + icsStamp(end)
     + "&location=" + encodeURIComponent(ev.location || "")
     + "&details=" + encodeURIComponent(ev.description || "");
-  return { icsUrl, google:g };
+  return { icsUrl, google };
 }
 
-function showMessage(text){
-  app.replaceChildren(el("div","center muted",text));
-}
+/* ---------------- Home page ---------------- */
+function renderHome(){
+  const wrap = document.createElement("div");
 
-async function load(){
-  if(!slug){
-    showMessage("Open an event link to see the details.");
-    return;
-  }
-  const { data: ev, error } = await sb.rpc("get_event", { p_slug: slug });
-  if(error || !ev){
-    showMessage("Sorry, we couldn't find that event.");
-    return;
-  }
-  render(ev);
-}
-
-function render(ev){
-  document.title = ev.title + " · Gatho";
-  const start = new Date(ev.starts_at);
-  const saved = (() => { try { return JSON.parse(safeGet("gatho_" + ev.slug) || "null"); } catch(e){ return null; } })();
+  const hero = el("div","hero");
+  hero.appendChild(el("h1",null,"Invites without the hassle"));
+  hero.appendChild(el("p",null,"Create an event in a minute, share one link anywhere, and see who's coming. Your guests don't need an app or an account."));
+  const cta = el("a","cta","Host an event");
+  cta.href = "/host";
+  hero.appendChild(cta);
+  wrap.appendChild(hero);
 
   const card = el("div","card");
-  card.appendChild(el("h1",null,ev.title));
+  card.style.marginTop = "28px";
+  [
+    ["🔗","One link, any app","Send it by text, WhatsApp, Instagram, Snapchat or email."],
+    ["✅","Reply in one tap","Going, maybe or can't go. Guests can bring a +1 and leave a comment."],
+    ["📅","Straight to the calendar","Guests add the event to Apple, Google or Outlook calendar."],
+    ["📸","Make it look good","Add a cover photo so your invite stands out."]
+  ].forEach(([e,t,d]) => {
+    const f = el("div","feat");
+    f.appendChild(el("div","e",e));
+    const x = el("div"); x.appendChild(el("b",null,t)); x.appendChild(el("span",null,d));
+    f.appendChild(x);
+    card.appendChild(f);
+  });
+  card.lastChild.style.marginBottom = "0";
+  wrap.appendChild(card);
 
-  const r1 = el("div","row");
-  r1.appendChild(el("span","ic","📅"));
+  const foot = el("div","foot");
+  const pl = el("a",null,"Privacy"); pl.href = "/privacy";
+  foot.append("Made with care · ", pl);
+  wrap.appendChild(foot);
+
+  app.replaceChildren(wrap);
+}
+
+/* ---------------- Event page ---------------- */
+async function load(){
+  if(!slug){
+    if(rawSlug) return showMessage("Sorry, we couldn't find that event.");
+    return renderHome();
+  }
+  const m = document.createElement("meta");
+  m.name = "robots"; m.content = "noindex";
+  document.head.appendChild(m);
+
+  const { data: ev, error } = await sb.rpc("get_event", { p_slug: slug });
+  if(error || !ev) return showMessage("Sorry, we couldn't find that event.");
+  renderEvent(ev);
+}
+function showMessage(text){ app.replaceChildren(el("div","center muted",text)); }
+
+function renderComments(list, comments){
+  list.replaceChildren();
+  if(!comments.length){ list.appendChild(el("div","muted","No comments yet. Say hi!")); return; }
+  comments.forEach(c => {
+    const row = el("div","comment");
+    const head = el("div","chead");
+    head.append(el("b",null,c.guest_name), el("span","muted"," · " + ago(c.created_at)));
+    row.append(head, el("div","cbody",c.body));
+    list.appendChild(row);
+  });
+}
+
+function renderEvent(ev){
+  document.title = ev.title + " · Gatho";
+  const start = new Date(ev.starts_at);
+  let saved = null;
+  try { saved = JSON.parse(safeGet("gatho_" + ev.slug) || "null"); } catch(e){}
+  const st = { status: saved && saved.status || null, plus: saved && saved.plus || 0 };
+
+  const wrap = document.createElement("div");
+
+  /* ---- main card ---- */
+  const card = el("div","card flush");
+
+  const cover = el("div","cover");
+  if(ev.cover_url && ev.cover_url.startsWith(COVER_PREFIX)){
+    cover.style.backgroundImage = 'url("' + ev.cover_url + '")';
+  } else {
+    const h = hue(ev.slug);
+    cover.style.background = "linear-gradient(135deg, hsl(" + h + " 75% 62%), hsl(" + ((h+50)%360) + " 80% 68%))";
+  }
+  card.appendChild(cover);
+
+  const body = el("div","body");
+  body.appendChild(el("h1",null,ev.title));
+
+  const r1 = el("div","row"); r1.appendChild(el("span","ic","📅"));
   const when = el("div");
   when.appendChild(el("div",null,fmtDate(start)));
   when.appendChild(el("div","muted",fmtTime(start) + (ev.ends_at ? " – " + fmtTime(new Date(ev.ends_at)) : "")));
-  r1.appendChild(when);
-  card.appendChild(r1);
+  r1.appendChild(when); body.appendChild(r1);
 
   if(ev.location){
-    const r2 = el("div","row");
-    r2.appendChild(el("span","ic","📍"));
-    r2.appendChild(el("div",null,ev.location));
-    card.appendChild(r2);
+    const r2 = el("div","row"); r2.appendChild(el("span","ic","📍"));
+    const a = el("a",null,ev.location);
+    a.href = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(ev.location);
+    a.target = "_blank"; a.rel = "noopener";
+    const w = el("div"); w.appendChild(a);
+    r2.appendChild(w); body.appendChild(r2);
   }
-  if(ev.description) card.appendChild(el("p","desc",ev.description));
+  if(ev.description) body.appendChild(el("p","desc",ev.description));
 
   const counts = el("div","counts");
   const g = el("span"); g.append(el("b",null,String(ev.going))," going");
   const m = el("span"); m.append(el("b",null,String(ev.maybe))," maybe");
   counts.append(g,m);
-  card.appendChild(counts);
+  body.appendChild(counts);
 
-  card.appendChild(el("h2",null,"Will you be there?"));
+  body.appendChild(el("h2",null,"Will you be there?"));
 
-  const name = el("input");
-  name.type = "text";
-  name.placeholder = "Your name";
-  name.maxLength = 60;
-  name.autocomplete = "given-name";
-  if(saved && saved.name) name.value = saved.name;
-  card.appendChild(name);
+  const name = el("input"); name.type = "text"; name.placeholder = "Your name"; name.maxLength = 60; name.autocomplete = "given-name";
+  name.value = (saved && saved.name) || safeGet("gatho_name") || "";
+  body.appendChild(name);
 
   const btns = el("div","btns");
-  const opts = [["going","Going"],["maybe","Maybe"],["not_going","Can't go"]];
   const buttons = {};
-  opts.forEach(([val,label]) => {
-    const b = el("button","btn",label);
-    b.type = "button";
+  [["going","Going"],["maybe","Maybe"],["not_going","Can't go"]].forEach(([val,label]) => {
+    const b = el("button","btn",label); b.type = "button";
     buttons[val] = b;
-    if(saved && saved.status === val) b.classList.add("sel", val);
+    if(st.status === val) b.classList.add("sel", val);
     b.addEventListener("click", () => submit(val));
     btns.appendChild(b);
   });
-  card.appendChild(btns);
+  body.appendChild(btns);
 
-  const msg = el("div","msg");
-  card.appendChild(msg);
+  const step = el("div","stepper");
+  step.appendChild(el("span","slabel","Bringing anyone? (+1s)"));
+  const ctl = el("div","sctl");
+  const minus = el("button","sbtn","−"); minus.type = "button"; minus.setAttribute("aria-label","Fewer guests");
+  const val = el("span","sval",String(st.plus));
+  const plus = el("button","sbtn","+"); plus.type = "button"; plus.setAttribute("aria-label","More guests");
+  ctl.append(minus,val,plus); step.appendChild(ctl);
+  body.appendChild(step);
+  function syncStepper(){ step.style.display = st.status === "not_going" ? "none" : "flex"; val.textContent = String(st.plus); }
+  syncStepper();
+  function bump(d){
+    const n = Math.max(0, Math.min(5, st.plus + d));
+    if(n === st.plus) return;
+    st.plus = n; val.textContent = String(n);
+    if(st.status && st.status !== "not_going") submit(st.status);
+  }
+  minus.addEventListener("click", () => bump(-1));
+  plus.addEventListener("click", () => bump(1));
+
+  const msg = el("div","msg"); body.appendChild(msg);
 
   const cal = el("div","cal");
   const links = calendarLinks(ev);
-  const a1 = el("a","primary","Add to Apple / Outlook calendar");
-  a1.href = links.icsUrl; a1.download = "event.ics";
-  const a2 = el("a",null,"Add to Google Calendar");
-  a2.href = links.google; a2.target = "_blank"; a2.rel = "noopener";
-  cal.append(a1,a2);
-  card.appendChild(cal);
-  if(saved && (saved.status === "going" || saved.status === "maybe")) cal.classList.add("show");
+  const a1 = el("a","primary","Add to Apple / Outlook calendar"); a1.href = links.icsUrl; a1.download = "event.ics";
+  const a2 = el("a",null,"Add to Google Calendar"); a2.href = links.google; a2.target = "_blank"; a2.rel = "noopener";
+  cal.append(a1,a2); body.appendChild(cal);
+  if(st.status === "going" || st.status === "maybe") cal.classList.add("show");
 
-  app.replaceChildren(card);
+  card.appendChild(body);
+  wrap.appendChild(card);
+
+  /* ---- comments card ---- */
+  const cc = el("div","card");
+  cc.appendChild(el("h3",null,"Comments"));
+  const list = el("div"); renderComments(list, ev.comments || []);
+  cc.appendChild(list);
+
+  const form = el("div"); form.style.marginTop = "16px";
+  const cname = el("input"); cname.type = "text"; cname.placeholder = "Your name"; cname.maxLength = 60; cname.value = name.value;
+  const cbody = el("textarea"); cbody.placeholder = "Leave a comment (e.g. I'll bring dessert!)"; cbody.maxLength = 500;
+  const post = el("button","postbtn","Post comment"); post.type = "button";
+  const cmsg = el("div","msg");
+  form.append(cname, cbody, post, cmsg);
+  cc.appendChild(form);
+  wrap.appendChild(cc);
+
+  const foot = el("div","foot");
+  const home = el("a",null,"Make your own event with Gatho"); home.href = "/";
+  foot.appendChild(home);
+  wrap.appendChild(foot);
+
+  app.replaceChildren(wrap);
+
+  name.addEventListener("input", () => { if(!cname.value) cname.value = name.value; });
 
   async function submit(status){
     const n = name.value.trim();
     if(!n){ msg.className = "msg err"; msg.textContent = "Please enter your name first."; name.focus(); return; }
     msg.className = "msg muted"; msg.textContent = "Saving…";
-    const { error } = await sb.rpc("submit_rsvp", { p_slug: ev.slug, p_name: n, p_status: status, p_token: getToken() });
-    if(error){ msg.className = "msg err"; msg.textContent = "Something went wrong. Please try again."; return; }
-    safeSet("gatho_" + ev.slug, JSON.stringify({ name:n, status }));
+    const plusToSend = status === "not_going" ? 0 : st.plus;
+    const { error } = await sb.rpc("submit_rsvp", { p_slug: ev.slug, p_name: n, p_status: status, p_token: getToken(), p_plus_ones: plusToSend });
+    if(error){ msg.className = "msg err"; msg.textContent = friendly(error); return; }
+    st.status = status; if(status === "not_going") st.plus = 0;
+    safeSet("gatho_" + ev.slug, JSON.stringify({ name:n, status, plus: st.plus }));
+    safeSet("gatho_name", n);
     Object.entries(buttons).forEach(([v,b]) => { b.className = "btn"; if(v === status) b.classList.add("sel", v); });
+    syncStepper();
     msg.className = "msg ok";
     msg.textContent = status === "not_going" ? "Thanks for letting them know." : "You're in! See you there.";
     cal.classList.toggle("show", status !== "not_going");
   }
+
+  post.addEventListener("click", async () => {
+    const n = cname.value.trim(), t = cbody.value.trim();
+    if(!n){ cmsg.className = "msg err"; cmsg.textContent = "Please enter your name."; cname.focus(); return; }
+    if(!t){ cmsg.className = "msg err"; cmsg.textContent = "Write a comment first."; cbody.focus(); return; }
+    post.disabled = true; cmsg.className = "msg muted"; cmsg.textContent = "Posting…";
+    const { error } = await sb.rpc("post_comment", { p_slug: ev.slug, p_name: n, p_body: t, p_token: getToken() });
+    post.disabled = false;
+    if(error){ cmsg.className = "msg err"; cmsg.textContent = friendly(error); return; }
+    safeSet("gatho_name", n);
+    cbody.value = ""; cmsg.textContent = "";
+    const { data: fresh } = await sb.rpc("get_event", { p_slug: ev.slug });
+    if(fresh) renderComments(list, fresh.comments || []);
+  });
 }
 
 load();
