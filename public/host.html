@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gatho Host</title>
+<style>
+  :root { --bg:#faf7f2; --card:#fff; --ink:#1f1d1a; --muted:#7a746b; --accent:#e4572e; --line:#ece6dc; --go:#2e9e5b; --maybe:#e0a526; --no:#c0392b; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; background:var(--bg); color:var(--ink); }
+  .wrap { max-width:520px; margin:0 auto; padding:24px 16px 64px; }
+  .top { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+  .brand { font-weight:800; letter-spacing:-.5px; color:var(--accent); font-size:20px; }
+  .link { background:none; border:none; color:var(--muted); font-size:14px; cursor:pointer; text-decoration:underline; padding:0; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:20px; padding:20px; margin-bottom:16px; }
+  h1 { margin:0 0 12px; font-size:24px; letter-spacing:-.5px; }
+  h2 { margin:0 0 4px; font-size:20px; letter-spacing:-.3px; }
+  label { display:block; font-size:13px; font-weight:600; color:var(--muted); margin:12px 0 4px; }
+  input, textarea { width:100%; padding:12px; font-size:16px; font-family:inherit; border:1px solid var(--line); border-radius:12px; background:#fff; }
+  textarea { min-height:80px; resize:vertical; }
+  .btn { display:block; width:100%; margin-top:16px; padding:14px; font-size:16px; font-weight:700; border:none; border-radius:12px; background:var(--accent); color:#fff; cursor:pointer; }
+  .btn.alt { background:#fff; color:var(--accent); border:2px solid var(--accent); margin-top:8px; }
+  .btn.small { display:inline-block; width:auto; padding:10px 16px; font-size:14px; margin:12px 8px 0 0; }
+  .btn:disabled { opacity:.6; }
+  .muted { color:var(--muted); font-size:14px; }
+  .msg { margin-top:12px; font-size:14px; min-height:18px; }
+  .err { color:var(--no); }
+  .ok { color:var(--go); }
+  .counts { display:flex; gap:14px; margin:12px 0 4px; font-size:14px; color:var(--muted); }
+  .counts b { color:var(--ink); }
+  .guests { margin-top:8px; font-size:14px; line-height:1.6; }
+  .pill { display:inline-block; font-size:12px; font-weight:700; padding:2px 8px; border-radius:99px; color:#fff; margin-right:6px; }
+  .pill.going { background:var(--go); } .pill.maybe { background:var(--maybe); } .pill.not_going { background:var(--no); }
+  details summary { cursor:pointer; color:var(--accent); font-weight:600; font-size:14px; margin-top:12px; }
+  .center { text-align:center; padding:40px 8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="brand">gatho</div>
+    <button class="link" id="signout" style="display:none">Sign out</button>
+  </div>
+  <div id="app"><div class="center muted">Loading…</div></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = "https://wjnfkqkzbblijzmbcasx.supabase.co";
+const SUPABASE_KEY = "sb_publishable_re5_9n7OLaKaCFGuIMlVvw_OIEsla_V";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const app = document.getElementById("app");
+const signoutBtn = document.getElementById("signout");
+
+function el(tag, cls, text){
+  const n = document.createElement(tag);
+  if(cls) n.className = cls;
+  if(text !== undefined) n.textContent = text;
+  return n;
+}
+function field(labelText, input){
+  const w = document.createElement("div");
+  w.append(el("label", null, labelText), input);
+  return w;
+}
+function input(type, placeholder){
+  const i = document.createElement("input");
+  i.type = type;
+  if(placeholder) i.placeholder = placeholder;
+  return i;
+}
+function fmt(iso){
+  const d = new Date(iso);
+  return d.toLocaleDateString(undefined, { weekday:"short", day:"numeric", month:"short" }) + " · " +
+         d.toLocaleTimeString(undefined, { hour:"numeric", minute:"2-digit" });
+}
+
+async function init(){
+  const { data: { session } } = await sb.auth.getSession();
+  if(session) showDashboard(); else showLogin();
+}
+
+sb.auth.onAuthStateChange((event) => {
+  if(event === "SIGNED_OUT") showLogin();
+});
+
+signoutBtn.addEventListener("click", async () => { await sb.auth.signOut(); });
+
+/* ---------- Login ---------- */
+function showLogin(){
+  signoutBtn.style.display = "none";
+  const card = el("div","card");
+  card.appendChild(el("h1", null, "Host sign in"));
+  card.appendChild(el("p","muted","Sign in or create an account to make events. Guests never need one."));
+  const email = input("email","you@example.com");
+  email.autocomplete = "email";
+  const pass = input("password","Password (6+ characters)");
+  pass.autocomplete = "current-password";
+  card.append(field("Email", email), field("Password", pass));
+  const msg = el("div","msg");
+
+  const inBtn = el("button","btn","Sign in");
+  const upBtn = el("button","btn alt","Create account");
+
+  inBtn.addEventListener("click", async () => {
+    msg.className = "msg muted"; msg.textContent = "Signing in…";
+    const { error } = await sb.auth.signInWithPassword({ email: email.value.trim(), password: pass.value });
+    if(error){ msg.className = "msg err"; msg.textContent = error.message; return; }
+    showDashboard();
+  });
+  upBtn.addEventListener("click", async () => {
+    msg.className = "msg muted"; msg.textContent = "Creating account…";
+    const { data, error } = await sb.auth.signUp({ email: email.value.trim(), password: pass.value });
+    if(error){ msg.className = "msg err"; msg.textContent = error.message; return; }
+    if(!data.session){ msg.className = "msg ok"; msg.textContent = "Check your email to confirm, then sign in."; return; }
+    showDashboard();
+  });
+
+  card.append(inBtn, upBtn, msg);
+  app.replaceChildren(card);
+}
+
+/* ---------- Dashboard ---------- */
+async function showDashboard(){
+  signoutBtn.style.display = "inline";
+  app.replaceChildren(el("div","center muted","Loading your events…"));
+
+  const { data: events, error } = await sb
+    .from("events")
+    .select("id, slug, title, starts_at, ends_at, location, description, rsvps(guest_name, status)")
+    .order("starts_at", { ascending: true });
+
+  const root = document.createElement("div");
+
+  const newBtn = el("button","btn","+ Create event");
+  newBtn.style.marginTop = "0";
+  newBtn.addEventListener("click", showCreate);
+  root.appendChild(newBtn);
+
+  root.appendChild(el("h1",null,"")).style.height = "8px";
+
+  if(error){
+    root.appendChild(el("p","msg err","Couldn't load events: " + error.message));
+  } else if(!events.length){
+    const c = el("div","card");
+    c.appendChild(el("p","muted","No events yet. Tap Create event to make your first one."));
+    root.appendChild(c);
+  } else {
+    events.forEach(ev => root.appendChild(eventCard(ev)));
+  }
+  app.replaceChildren(root);
+}
+
+function eventCard(ev){
+  const card = el("div","card");
+  card.appendChild(el("h2",null,ev.title));
+  card.appendChild(el("div","muted", fmt(ev.starts_at) + (ev.location ? " · " + ev.location : "")));
+
+  const r = ev.rsvps || [];
+  const count = s => r.filter(x => x.status === s).length;
+  const counts = el("div","counts");
+  [["going","going"],["maybe","maybe"],["not_going","can't go"]].forEach(([s,label]) => {
+    const sp = el("span"); sp.append(el("b",null,String(count(s)))," " + label); counts.appendChild(sp);
+  });
+  card.appendChild(counts);
+
+  const url = location.origin + "/e/" + ev.slug;
+
+  const share = el("button","btn small","Share invite");
+  share.addEventListener("click", async () => {
+    const text = "You're invited to " + ev.title + "! RSVP here:";
+    if(navigator.share){
+      try { await navigator.share({ title: ev.title, text, url }); } catch(e){}
+    } else {
+      await copy(url, share);
+    }
+  });
+  const copyBtn = el("button","btn small alt","Copy link");
+  copyBtn.addEventListener("click", () => copy(url, copyBtn));
+  card.append(share, copyBtn);
+
+  if(r.length){
+    const d = document.createElement("details");
+    d.appendChild(el("summary",null,"See who's replied"));
+    const g = el("div","guests");
+    [["going","Going"],["maybe","Maybe"],["not_going","Can't go"]].forEach(([s,label]) => {
+      r.filter(x => x.status === s).forEach(x => {
+        const line = el("div");
+        line.append(el("span","pill " + s, label), document.createTextNode(x.guest_name));
+        g.appendChild(line);
+      });
+    });
+    d.appendChild(g);
+    card.appendChild(d);
+  }
+
+  const del = el("button","link","Delete event");
+  del.style.display = "block"; del.style.marginTop = "16px";
+  del.addEventListener("click", async () => {
+    if(!confirm("Delete \"" + ev.title + "\" and all its replies?")) return;
+    const { error } = await sb.from("events").delete().eq("id", ev.id);
+    if(error){ alert("Couldn't delete: " + error.message); return; }
+    showDashboard();
+  });
+  card.appendChild(del);
+
+  return card;
+}
+
+async function copy(text, btn){
+  const old = btn.textContent;
+  try { await navigator.clipboard.writeText(text); btn.textContent = "Copied!"; }
+  catch(e){ window.prompt("Copy this link:", text); }
+  setTimeout(() => { btn.textContent = old; }, 1500);
+}
+
+/* ---------- Create ---------- */
+function showCreate(){
+  const card = el("div","card");
+  card.appendChild(el("h1",null,"New event"));
+
+  const title = input("text","e.g. Oli's birthday drinks");
+  title.maxLength = 100;
+  const start = input("datetime-local");
+  const end = input("datetime-local");
+  const loc = input("text","Where is it?");
+  const desc = document.createElement("textarea");
+  desc.placeholder = "Anything guests should know (what to bring, dress code…)";
+
+  // default start: tomorrow 7pm local
+  const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(19,0,0,0);
+  const pad = n => String(n).padStart(2,"0");
+  start.value = d.getFullYear() + "-" + pad(d.getMonth()+1) + "-" + pad(d.getDate()) + "T" + pad(d.getHours()) + ":" + pad(d.getMinutes());
+
+  card.append(
+    field("Event name", title),
+    field("Starts", start),
+    field("Ends (optional)", end),
+    field("Location", loc),
+    field("Details", desc)
+  );
+
+  const msg = el("div","msg");
+  const save = el("button","btn","Create & share");
+  const cancel = el("button","btn alt","Cancel");
+  cancel.addEventListener("click", showDashboard);
+
+  save.addEventListener("click", async () => {
+    if(!title.value.trim() || !start.value){ msg.className = "msg err"; msg.textContent = "Add a name and start time."; return; }
+    save.disabled = true; msg.className = "msg muted"; msg.textContent = "Creating…";
+    const row = {
+      title: title.value.trim(),
+      starts_at: new Date(start.value).toISOString(),
+      ends_at: end.value ? new Date(end.value).toISOString() : null,
+      location: loc.value.trim() || null,
+      description: desc.value.trim() || null
+    };
+    const { data, error } = await sb.from("events").insert(row).select("slug, title").single();
+    if(error){ save.disabled = false; msg.className = "msg err"; msg.textContent = error.message; return; }
+    showCreated(data);
+  });
+
+  card.append(save, cancel, msg);
+  app.replaceChildren(card);
+}
+
+function showCreated(ev){
+  const url = location.origin + "/e/" + ev.slug;
+  const card = el("div","card");
+  card.appendChild(el("h1",null,"You're all set 🎉"));
+  card.appendChild(el("p","muted","Send this link to your guests. They don't need an account."));
+  const box = input("text"); box.value = url; box.readOnly = true;
+  card.appendChild(box);
+
+  const share = el("button","btn","Share invite");
+  share.addEventListener("click", async () => {
+    const text = "You're invited to " + ev.title + "! RSVP here:";
+    if(navigator.share){ try { await navigator.share({ title: ev.title, text, url }); } catch(e){} }
+    else await copy(url, share);
+  });
+  const copyBtn = el("button","btn alt","Copy link");
+  copyBtn.addEventListener("click", () => copy(url, copyBtn));
+  const done = el("button","btn alt","Back to my events");
+  done.addEventListener("click", showDashboard);
+  card.append(share, copyBtn, done);
+  app.replaceChildren(card);
+}
+
+init();
+</script>
+</body>
+</html>
